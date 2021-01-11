@@ -189,7 +189,7 @@ class Visualizer:
 
 
     @staticmethod
-    def viz_on_depth_downsampling(pretty, depth, interval, h_error, step, alllabels, allnoise=None,
+    def viz_on_depth_downsampling(pretty, depth, floorPoints, interval, h_error, step, alllabels, allnoise=None,
                                   cy_d=0, fy_d=1):
         if allnoise is None:
             allnoise = []
