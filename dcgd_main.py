@@ -97,15 +97,19 @@ if __name__ == '__main__':
 
     labels = dcgd.label_all_subcuts_miny(filtered, ymin, 10)
     labelsn = dcgd.label_all_subcuts_miny(subcuts, ymin, 10)
+    
+    # Get minimal floor points of the labels set, the ones annotated with 'cc' per depth indice
+    floorPoints_labels = [[point for a in labels[ind] if a[0] == 'cc' for point in a[1]] for ind in range(lenList)]
+    
+    # Get minimal floor points of the labelsn set, the ones annotated with 'cc' per depth indice
+    floorPoints_labelsn = [[point for a in labelsn[ind] if a[0] == 'cc' for point in a[1]] for ind in range(lenList)]
 
     p = np.copy(pretty)
     # visualization:
     Visualizer.viz_all_labels(labelsn, interval, show=True, filename=results_dir +"labels.png")
     Visualizer.viz_all_filtered_labels(labels, noise, interval, show=True, filename=results_dir +"filtered.png")
-    Visualizer.viz_on_depth_downsampling(pretty, depth, interval, h_err, step,
-                                        labels, noise, cy_depth, fy_depth)
-    Visualizer.viz_on_depth_downsampling(p, depth, interval, h_err, step,
-                                         labelsn, noise, cy_depth, fy_depth)
+    Visualizer.viz_on_depth_downsampling(pretty, depth, floorPoints_labels, interval, h_err, step, noise, cy_depth, fy_depth)
+    Visualizer.viz_on_depth_downsampling(p, depth, floorPoints_labelsn, interval, h_err, step, noise, cy_depth, fy_depth)
 
 
     # save floor:
