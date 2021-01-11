@@ -1,6 +1,7 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 
 class Visualizer:
@@ -195,22 +196,26 @@ class Visualizer:
 
         (mini, maxi) = interval
         (height, width) = depth.shape[:2]
-        for x in range(width):
-            for y in range(height):
-                d = depth[y, x]
-                if mini <= d <= maxi:
-                    ind = int((d - mini) / step)
-                    labels = alllabels[ind]
-                    for a in labels:
-                        for p in a[1]:
-                            if x == p[0]:
-                                yreal = - ((y - cy_d) * d / fy_d)  # compute the real y
-                                if abs(yreal - p[2]) <= h_error*2:
-                                    if a[0] == "cc":
-                                        pretty[y, x] = [0, 255, 0]
-                                    else:
-                                        pass
-                                        # pretty[y, x] = [0, 0, 255]
-                                else:
-                                    pass
-                                    # pretty[y, x] = [0, 255, 255]
+
+        for ind in range(len(floorPoints)):
+
+            arr = np.array(floorPoints[ind])
+            if arr.size > 0:
+
+                X = arr[:, 0].astype(int)
+                df_depth = depth[:, X]
+
+                filter1 = df_depth >= mini
+                filter2 = df_depth <= maxi
+                filter3 = ((df_depth - mini) / step).astype(np.int) == ind
+                df_depth = np.where(filter1 & filter2 & filter3, df_depth, np.nan)
+
+                yArr = - (np.arange(height) - cy_d)
+                df_yReal = df_depth * yArr[:, None] / fy_d
+
+                minY_reals = arr[:, 2].T
+                df_yReal = abs(df_yReal - minY_reals)
+                df_yReal = np.where((np.isnan(df_yReal)) | (df_yReal > h_error * 2), df_yReal, True)
+
+                indices = np.where(df_yReal == True)
+                pretty[indices[0], X[indices[1]]] = [68, 192, 226]
