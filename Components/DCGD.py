@@ -33,65 +33,6 @@ class DCGD:
     #                     cuts[ind, x] = y_real
     #     return cuts
 
-    def compute_cuts(self, depthImg):
-        (mini, maxi) = self._interval
-        cuts = [[]] * (maxi - mini + 1)
-        (height, width) = depthImg.shape[:2]
-        for x in range(width):
-            for y in range(height):
-                curr = depthImg[y, x]  # get tue current depth
-                if maxi >= curr >= mini:  # if the current depth is valable
-                    # compute real_y
-                    y_real = -((y - self._camera._cy_d) * curr / self._camera._fy_d)  # compute the real depth
-                    ind = curr - mini  # compute the cut indice
-                    cut = cuts[ind]  # get the cut
-                    isin = False
-                    if len(cut) == 0:  # if cut is empty then we add directely our point
-                        cuts[ind] = [[x, y, y_real]]
-                    else:  # if cut is not empty we search if it exists a point that has the same x and has a larger y_real
-                        # if so, we remove the previous element (point) and replace it with the new one:
-                        for el in cut:
-                            if el[0] == x and -y_real < el[2]:
-                                cuts[ind].remove(el)
-                                cuts[ind].append([x, y, y_real])
-                                isin = True
-                                break
-                        if not isin:  # if such element does not exist, we append directly
-                            cuts[ind].append([x, y, y_real])
-        return cuts
-
-    def compute_cuts_miny(self, depthImg):
-        (mini, maxi) = self._interval
-        cuts = [[]] * (maxi - mini + 1)
-        (height, width) = depthImg.shape[:2]
-        miny = sys.float_info.max
-        for x in range(width):
-            for y in range(height):
-                curr = depthImg[y, x]  # get tue current depth
-                if maxi >= curr >= mini:  # if the current depth is valable
-                    # compute real_y
-                    y_real = -((y - self._camera._cy_d) * curr / self._camera._fy_d)  # compute the real depth
-                    #####
-                    if y_real < miny:  # computing min y:
-                        miny = y_real
-                    #####
-                    ind = curr - mini  # compute the cut indice
-                    cut = cuts[ind]  # get the cut
-                    isin = False
-                    if len(cut) == 0:  # if cut is empty then we add directely our point
-                        cuts[ind] = [[x, y, y_real]]
-                    else:  # if cut is not empty we search if it exists a point that has the same x and has a larger y_real
-                        # if so, we remove the previous element (point) and replace it with the new one:
-                        for el in cut:
-                            if el[0] == x and -y_real < el[2]:
-                                cuts[ind].remove(el)
-                                cuts[ind].append([x, y, y_real])
-                                isin = True
-                                break
-                        if not isin:  # if such element does not exist, we append directly
-                            cuts[ind].append([x, y, y_real])
-        return cuts, miny
-
     def compute_subcuts(self, cut):
         sub_cuts = []
         if len(cut) < 2:
@@ -108,11 +49,13 @@ class DCGD:
             sub_cuts.append(sub)
         return sub_cuts
 
+
     def compute_all_subcuts(self, cuts):
         subcuts = []
         for cut in cuts:
             subcuts.append(self.compute_subcuts(cut))
         return subcuts
+
 
     def compute_subcuts_q(self, cut, q=50):
         sub_cuts = []
@@ -157,7 +100,6 @@ class DCGD:
                 noise.append(subcut)
                 if i + 1 < len(subcuts):
                     if abs(filtered[-1][-1][2] - subcuts[i + 1][0][2]) < self._height_err:
-
                         filtered[-1] += subcuts[i + 1]
                         i += 1
             i += 1
@@ -171,44 +113,50 @@ class DCGD:
 
         return filtered, noise
 
+    def check_and_update_annotation(self, annotations, i):
+        if annotations[i][0] == -1:
+            sub = annotations[i][1]
+            subp = annotations[i + 1][1]
+            if sub[-1][2] < subp[0][2]:
+                annotations[i][0] = "cc"
+                annotations[i + 1][0] = "cv"
+            else:
+                annotations[i][0] = "cv"
+                annotations[i + 1][0] = "cc"
+
+        elif annotations[i][0] == "cc":
+            sub = annotations[i][1]
+            subp = annotations[i + 1][1]
+            if sub[-1][2] < subp[0][2]:
+                annotations[i + 1][0] = "cv"
+            else:
+                annotations[i][0] = "cv"
+                annotations[i + 1][0] = "cc"
+
+        elif annotations[i][0] == "cv":
+            sub = annotations[i][1]
+            subp = annotations[i + 1][1]
+            if sub[-1][2] < subp[0][2]:
+                annotations[i + 1][0] = "cv"
+            else:
+                annotations[i + 1][0] = "cc"
+
+        return annotations[i], annotations[i + 1]
+
     def label_subcuts(self, subcuts):
         if len(subcuts) == 1:
             return [["cc", subcuts[0]]]
         if len(subcuts) == 0:
             return []
 
-        # initialisation:
+        # initialization:
         annotations = [[-1, sc] for sc in subcuts]
         for i in range(len(annotations) - 1):
-            if annotations[i][0] == -1:
-                sub = annotations[i][1]
-                subp = annotations[i + 1][1]
-                if sub[-1][2] < subp[0][2]:
-                    annotations[i][0] = "cc"
-                    annotations[i + 1][0] = "cv"
-                else:
-                    annotations[i][0] = "cv"
-                    annotations[i + 1][0] = "cc"
-
-            elif annotations[i][0] == "cc":
-                sub = annotations[i][1]
-                subp = annotations[i + 1][1]
-                if sub[-1][2] < subp[0][2]:
-                    annotations[i + 1][0] = "cv"
-                else:
-                    annotations[i][0] = "cv"
-                    annotations[i + 1][0] = "cc"
-
-            elif annotations[i][0] == "cv":
-                sub = annotations[i][1]
-                subp = annotations[i + 1][1]
-                if sub[-1][2] < subp[0][2]:
-                    annotations[i + 1][0] = "cv"
-                else:
-                    annotations[i + 1][0] = "cc"
+            annotations[i], annotations[i + 1] = self.check_and_update_annotation(annotations, i)
+            
         return annotations
 
-    def label_subcuts_miny(self, subcuts, miny, error_int):
+    def label_subcuts_ymin(self, subcuts, miny, error_int):
         if len(subcuts) == 1:
             return [["cc", subcuts[0]]]
         if len(subcuts) == 0:
@@ -218,49 +166,18 @@ class DCGD:
         annotations = [[-1, sc] for sc in subcuts]
 
         for i in range(len(annotations) - 1):
-            mean_y = sum([cut[2] for cut in annotations[i][1]]) / len(
-                annotations[i])  # compute the y mean of the current subcut;
+            mean_y = np.mean([cut[2] for cut in annotations[i][1]])  # compute the y mean of the current subcut;
             if mean_y > miny + error_int:  # if the y exceeds the floor (miny of all the scene)
                 annotations[i][0] = "cv"
             else:
-                if annotations[i][0] == -1:
-                    sub = annotations[i][1]
-                    subp = annotations[i + 1][1]
-                    if sub[-1][2] < subp[0][2]:
-                        annotations[i][0] = "cc"
-                        annotations[i + 1][0] = "cv"
-                    else:
-                        annotations[i][0] = "cv"
-                        annotations[i + 1][0] = "cc"
-
-                elif annotations[i][0] == "cc":
-                    sub = annotations[i][1]
-                    subp = annotations[i + 1][1]
-                    if sub[-1][2] < subp[0][2]:
-                        annotations[i + 1][0] = "cv"
-                    else:
-                        annotations[i][0] = "cv"
-                        annotations[i + 1][0] = "cc"
-
-                elif annotations[i][0] == "cv":
-                    sub = annotations[i][1]
-                    subp = annotations[i + 1][1]
-                    if sub[-1][2] < subp[0][2]:
-                        annotations[i + 1][0] = "cv"
-                    else:
-                        annotations[i + 1][0] = "cc"
+                annotations[i], annotations[i + 1] = self.check_and_update_annotation(annotations, i)
+            
         return annotations
 
     def label_all_subcuts(self, allsubcuts):
         allannotations = []
         for subcuts in allsubcuts:
             allannotations.append(self.label_subcuts(subcuts))
-        return allannotations
-
-    def label_all_subcuts_miny(self, allsubcuts, miny, error_int=5):
-        allannotations = []
-        for subcuts in allsubcuts:
-            allannotations.append(self.label_subcuts_miny(subcuts, miny, error_int))
         return allannotations
 
     def filter_all_subcuts(self, allsubcuts):
@@ -272,74 +189,67 @@ class DCGD:
             allnoise.append(noise)
         return allfiltered, allnoise
 
-    def compute_cuts_downsampling(self, depthImg):
-        (mini, maxi) = self._interval
-        cuts = [[]] * int((maxi - mini + 1) / self._step + 1)
-        (height, width) = depthImg.shape[:2]
-        for x in range(width):
-            for y in range(height):
-                curr = depthImg[y, x]
-                if mini <= curr <= maxi:
-                    # compute real_y
-                    y_real = -((y - self._camera._cy_d) * curr / self._camera._fy_d)  # compute the real y
-                    ind = int((curr - mini) / self._step)  # compute the cut indice
-                    cut = cuts[ind]  # get the cut
-                    isin = False
-                    if len(cut) == 0:  # if cut is empty then we add directely our point
-                        cuts[ind] = [[x, y, y_real]]
-                    else:  # if cut is not empty we search if it exists a point that has the same x and has a larger y_real
-                        # if so, we remove the previous element (point) and replace it with the new one:
-                        for el in cut:
-                            if el[0] == x:
-                                if y_real < el[2]:
-                                    cuts[ind].remove(el)
-                                    cuts[ind].append([x, y, y_real])
-                                isin = True
-                                break
-                        if not isin:  # if such element does not exist, we append directly
-                            cuts[ind].append([x, y, y_real])
-        return cuts
-
     def compute_cuts_downsampling_miny(self, depthImg):
-        miny = sys.float_info.max
+
+        (height, width) = depthImg.shape[:2]
         (mini, maxi) = self._interval
         cuts = [[]] * int((maxi - mini + 1) / self._step + 1)
-        (height, width) = depthImg.shape[:2]
-        for x in range(width):
-            for y in range(height):
-                curr = depthImg[y, x]
-                if mini <= curr <= maxi:
-                    # compute real_y
-                    y_real = -((y - self._camera._cy_d) * curr / self._camera._fy_d)  # compute the real y
-                    #####
-                    if y_real < miny:  # computing min y:
-                        miny = y_real
-                    #####
-                    ind = int((curr - mini) / self._step)  # compute the cut indice
-                    cut = cuts[ind]  # get the cut
-                    isin = False
-                    if len(cut) == 0:  # if cut is empty then we add directely our point
-                        cuts[ind] = [[x, y, y_real]]
-                    else:  # if cut is not empty we search if it exists a point that has the same x and has a larger y_real
-                        # if so, we remove the previous element (point) and replace it with the new one:
-                        for el in cut:
-                            if el[0] == x:
-                                if y_real < el[2]:
-                                    cuts[ind].remove(el)
-                                    cuts[ind].append([x, y, y_real])
-                                isin = True
-                                break
-                        if not isin:  # if such element does not exist, we append directly
-                            cuts[ind].append([x, y, y_real])
+        boundary = len(cuts)
+
+        arr_depthInd = ((depthImg - mini) / self._step).astype(int)
+
+        filtre1 = arr_depthInd >= 0
+        filtre2 = arr_depthInd < boundary
+        arr_depthInd = np.where(filtre1 & filtre2, arr_depthInd, np.nan)
+
+        Y_indices = np.arange(height)
+        Y_indices = - (Y_indices - self._camera.cy_d)
+        arr_yReal = depthImg * Y_indices[:, None] / self._camera.fy_d
+        
+        # append the smallest height for each x to the right cut indice in the cuts list
+        for i in range(boundary):
+            arr = np.where(arr_depthInd == i, arr_yReal, np.nan)
+            min_Yreals_Ind = pd.DataFrame(arr).idxmin()
+            min_Yreals_Ind = min_Yreals_Ind.dropna()
+            
+            if min_Yreals_Ind.size > 0:
+                X = list(min_Yreals_Ind.keys())
+                Y = list(min_Yreals_Ind.values.astype(int))
+                Yreals = list(arr[Y, X])
+                cuts[i] = list(zip(X, Y, Yreals))
+        # compute miny: the smallest height in the entire scene
+        miny = np.min(arr_yReal)
+        
         return cuts, miny
 
     def cgd_process_downsampling(self, depthImg):
-        cuts = self.compute_cuts_downsampling(depthImg)
-        all_subcuts = self.compute_all_subcuts(cuts)
-        all_filtred, all_noise = self.filter_all_subcuts(all_subcuts)
-        all_labeled = self.label_all_subcuts(all_filtred)
-        return all_labeled, all_noise
+        
+        (mini, maxi) = self._interval
+        lenList = int((maxi - mini + 1) / self._step + 1)
 
+        print("Computing Cuts...")
+        start = time.time()
+        cuts, miny = self.compute_cuts_downsampling(depthImg)
+        end = time.time()
+        print(f'Consumed time: {end - start}')
+        print("Cuts Computed.\n")
+        print("Computing All Subcuts...")
+        subcuts = self.compute_all_subcuts(cuts)
+        print('All Subcuts Computed.\n')
+        print('Filtering All Subcuts...')
+        filtered, noise = self.filter_all_subcuts(subcuts)
+        print('All Subcuts Filtered.\n')
+        print('Labeling All Filtered Subcuts...')
+        labels = self.label_all_subcuts(filtered)
+        print('All Filtered subcuts Labeled.\n')
+        print('Labeling All Subcuts...')
+        labelsn = self.label_all_subcuts(subcuts)
+        print('All subcuts Labeled.')
+
+        # Get minimal floor points, the ones annotated with 'cc' per depth indice
+        floorPoints = [[point for a in labels[ind] if a[0] == 'cc' for point in a[1]] for ind in range(lenList)]
+
+        return labels, labelsn, noise, floorPoints
     def compute_transformationMatrix(self, allsubcuts, minSize=10):
         mmse = sys.float_info.max
         mx = []
