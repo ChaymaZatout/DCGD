@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 import cv2
 import time
+import pandas as pd
 import itertools
 
 
@@ -55,13 +56,11 @@ class DCGD:
             sub_cuts.append(sub)
         return sub_cuts
 
-
     def compute_all_subcuts(self, cuts):
         subcuts = []
         for cut in cuts:
             subcuts.append(self.compute_subcuts(cut))
         return subcuts
-
 
     def compute_subcuts_q(self, cut, q=50):
         sub_cuts = []
@@ -159,7 +158,7 @@ class DCGD:
         annotations = [[-1, sc] for sc in subcuts]
         for i in range(len(annotations) - 1):
             annotations[i], annotations[i + 1] = self.check_and_update_annotation(annotations, i)
-            
+
         return annotations
 
     def label_subcuts_ymin(self, subcuts, miny, error_int):
@@ -177,7 +176,7 @@ class DCGD:
                 annotations[i][0] = "cv"
             else:
                 annotations[i], annotations[i + 1] = self.check_and_update_annotation(annotations, i)
-            
+
         return annotations
 
     def label_all_subcuts(self, allsubcuts):
@@ -211,13 +210,13 @@ class DCGD:
         Y_indices = np.arange(height)
         Y_indices = - (Y_indices - self._camera.cy_d)
         arr_yReal = depthImg * Y_indices[:, None] / self._camera.fy_d
-        
+
         # append the smallest height for each x to the right cut indice in the cuts list
         for i in range(boundary):
             arr = np.where(arr_depthInd == i, arr_yReal, np.nan)
             min_Yreals_Ind = pd.DataFrame(arr).idxmin()
             min_Yreals_Ind = min_Yreals_Ind.dropna()
-            
+
             if min_Yreals_Ind.size > 0:
                 X = list(min_Yreals_Ind.keys())
                 Y = list(min_Yreals_Ind.values.astype(int))
@@ -225,11 +224,11 @@ class DCGD:
                 cuts[i] = list(zip(X, Y, Yreals))
         # compute miny: the smallest height in the entire scene
         miny = np.min(arr_yReal)
-        
+
         return cuts, miny
 
     def cgd_process_downsampling(self, depthImg):
-        
+
         (mini, maxi) = self._interval
         lenList = int((maxi - mini + 1) / self._step + 1)
 
@@ -256,6 +255,7 @@ class DCGD:
         floorPoints = [[point for a in labels[ind] if a[0] == 'cc' for point in a[1]] for ind in range(lenList)]
 
         return labels, labelsn, noise, floorPoints
+
     def compute_transformationMatrix(self, allsubcuts, minSize=10):
         mmse = sys.float_info.max
         mx = []
@@ -266,18 +266,18 @@ class DCGD:
         reg = LinearRegression()
         for subcuts in allsubcuts:
             for sc in subcuts:
-                if len(sc)> 3:
+                if len(sc) > 3:
                     x = [p[0] for p in sc]
                     y = [p[2] for p in sc]
 
                     # fitting:
-                    reg.fit(np.column_stack([x,y]), y)
+                    reg.fit(np.column_stack([x, y]), y)
 
                     # compute mse:
-                    yr = reg.predict(np.column_stack([x,y]))
+                    yr = reg.predict(np.column_stack([x, y]))
                     mse = mean_squared_error(y, yr)
 
-                    if mse < mmse and len(sc)> minSize:
+                    if mse < mmse and len(sc) > minSize:
                         mmse = mse
                         mx = x
                         my = y
@@ -296,15 +296,47 @@ class DCGD:
             src = [[p[0], p[2], 1] for p in sc]
             res = np.array(affinM).dot(np.array(src).transpose())
             resd = [[p[0], p[1]] for p in sc]
-            resg=[r[1] for r in list(np.array(res).transpose())]
+            resg = [r[1] for r in list(np.array(res).transpose())]
             # print(list(np.column_stack([resd, resg])))
             affsubcuts.append(np.column_stack([resd, resg]).tolist())
 
         return affsubcuts
-
 
     def map_allsubcuts(self, allsubcuts, affinM):
         allaffines = []
         for scs in allsubcuts:
             allaffines.append(self.map_subcuts(scs, affinM))
         return allaffines
+
+    def compute_cuts_downsampling(self, depthImg):
+
+        (height, width) = depthImg.shape[:2]
+        (mini, maxi) = self._interval
+        cuts = [[]] * int((maxi - mini + 1) / self._step + 1)
+        boundary = len(cuts)
+
+        arr_depthInd = ((depthImg - mini) / self._step).astype(int)
+
+        filtre1 = arr_depthInd >= 0
+        filtre2 = arr_depthInd < boundary
+        arr_depthInd = np.where(filtre1 & filtre2, arr_depthInd, np.nan)
+
+        Y_indices = np.arange(height)
+        Y_indices = - (Y_indices - self._camera.cy_d)
+        arr_yReal = depthImg * Y_indices[:, None] / self._camera.fy_d
+
+        # append the smallest height for each x to the right cut indice in the cuts list
+        for i in range(boundary):
+            arr = np.where(arr_depthInd == i, arr_yReal, np.nan)
+            min_Yreals_Ind = pd.DataFrame(arr).idxmin()
+            min_Yreals_Ind = min_Yreals_Ind.dropna()
+
+            if min_Yreals_Ind.size > 0:
+                X = list(min_Yreals_Ind.keys())
+                Y = list(min_Yreals_Ind.values.astype(int))
+                Yreals = list(arr[Y, X])
+                cuts[i] = list(zip(X, Y, Yreals))
+        # compute miny: the smallest height in the entire scene
+        miny = np.min(arr_yReal)
+
+        return cuts, miny
