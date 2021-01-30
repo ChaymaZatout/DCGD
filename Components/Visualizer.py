@@ -191,12 +191,8 @@ class Visualizer:
                     # pretty[p[1], p[0]] = [255, 0, 0]
                     pass
 
-
     @staticmethod
-    def viz_on_depth_downsampling(pretty, depth, floorPoints, interval, h_error, step, alllabels, allnoise=None,
-                                  cy_d=0, fy_d=1):
-        if allnoise is None:
-            allnoise = []
+    def viz_on_depth_downsampling(pretty, depth, floorPoints, interval, h_error, step, cy_d=0, fy_d=1):
 
         (mini, maxi) = interval
         (height, width) = depth.shape[:2]
@@ -205,7 +201,6 @@ class Visualizer:
 
             arr = np.array(floorPoints[ind])
             if arr.size > 0:
-
                 X = arr[:, 0].astype(int)
                 df_depth = depth[:, X]
 
@@ -222,4 +217,4 @@ class Visualizer:
                 df_yReal = np.where((np.isnan(df_yReal)) | (df_yReal > h_error * 2), df_yReal, True)
 
                 indices = np.where(df_yReal == True)
-                pretty[indices[0], X[indices[1]]] = [68, 192, 226]
+                pretty[indices[0], X[indices[1]]] = [0, 255, 0]
