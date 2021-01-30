@@ -1,3 +1,6 @@
+"""
+Author : Chayma Zatout
+"""
 class Camera:
 
     def __init__(self, cy_depth, fy_depth):

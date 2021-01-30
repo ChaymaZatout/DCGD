@@ -1,3 +1,7 @@
+"""
+Author : Chayma Zatout
+Execution time optimized by : Racha Salhi
+"""
 import cv2
 import freenect
 from Components.DCGD import *

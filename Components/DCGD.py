@@ -1,3 +1,7 @@
+"""
+Author : Chayma Zatout
+Execution time optimized by : Racha Salhi
+"""
 import numpy as np
 from Components.Camera import *
 from sklearn.linear_model import LinearRegression
