@@ -15,10 +15,10 @@ import itertools
 
 class DCGD:
 
-    def __init__(self, camera: Camera, interval, height_err, size_err, step=1):
+    def __init__(self, cy_d, fy_d, interval, height_err, size_err, step=1):
         self._height_err = height_err
         self._interval = interval
-        self._camera = camera
+        self._camera = Camera(cy_d, fy_d)
         self._size_err = size_err
         self._step = step
 
