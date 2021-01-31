@@ -37,20 +37,19 @@ if __name__ == '__main__':
     # Camera parameters:
     cy_depth = 2.3844389626620386e+02
     fy_depth = 5.8269103270988637e+02
-    cam = Camera(cy_depth, fy_depth)
     interval = (800, 4000)
 
     # create a DCGD object
     h_err = 20
     size_err = 3
     step = 15
-    dcgd = DCGD(cam, interval, h_err, size_err, step)
+    dcgd = DCGD(cy_depth, fy_depth, interval, h_err, size_err, step)
 
     # floor detection:
+    start = time.time()
     labels, labelsn, noise, minimalFloorPoints = dcgd.cgd_process_downsampling(depth)
 
     # Floor visualization
-    start = time.time()
     floorPoints = Visualizer.viz_on_depth_downsampling(pretty, depth, minimalFloorPoints, interval,
                                                        h_err, step, cy_depth, fy_depth)
     end = time.time()
